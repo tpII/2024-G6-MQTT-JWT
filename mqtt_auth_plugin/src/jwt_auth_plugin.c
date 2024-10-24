@@ -1,112 +1,118 @@
 #include "auth_plugin.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <mosquitto.h>
 #include <mosquitto_broker.h>
 #include <mosquitto_plugin.h>
 #include <jwt.h>
 
-#define PUBLIC_KEY "-----BEGIN PUBLIC KEY-----\n"\
-"MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...\n"\
-"-----END PUBLIC KEY-----"
+#define SECRET_KEY "taller-proyecto-2"
+#define MAX_TOKEN_SIZE 1024
 
-
-mosq_plugin_EXPORT int mosquitto_plugin_version(int supported_version_count,const int *supported_versions){
-    return 5;
-}
-
-/*
-// Function to verify JWT token
+// Helper function to verify JWT token
 int verify_jwt(const char *token) {
-    jwt_t *jwt;
-
-    // Parse the token
-    if (jwt_decode(&jwt, token, (const unsigned char *)PUBLIC_KEY, strlen(PUBLIC_KEY)) != 0) {
-        printf("Invalid token\n");
-        return 0;
+    jwt_t *jwt = NULL;
+    int result = -1;
+    
+    if (!token) {
+        mosquitto_log_printf(MOSQ_LOG_ERR, "No token provided");
+        return -1;
     }
 
-    // Check the algorithm
-    if (jwt_get_alg(jwt) != JWT_ALG_RS256) {
-        printf("Invalid algorithm\n");
-        jwt_free(jwt);
-        return 0;
+    int decode_res = jwt_decode(&jwt, token, (const unsigned char *)SECRET_KEY, strlen(SECRET_KEY));
+    if (decode_res != 0) {
+        mosquitto_log_printf(MOSQ_LOG_ERR, "JWT decode failed: %s",token);
+        return -1;
     }
 
-    // You can add more checks here, like expiration time, issuer, etc.
-    // For example:
-    // time_t now = time(NULL);
-    // if (jwt_get_grant_int(jwt, "exp") < now) {
-    //     printf("Token expired\n");
-    //     jwt_free(jwt);
-    //     return 0;
-    // }
+    // Log the claims for debugging
+    char *grants = jwt_dump_str(jwt, 0);
+    if (grants) {
+        mosquitto_log_printf(MOSQ_LOG_INFO, "JWT Claims: %s", grants);
+        free(grants);
+    }
+
+    // Verify token hasn't expired (if exp claim exists)
+    time_t now = time(NULL);
+    long exp = 0;
+    exp = jwt_get_grant_int(jwt, "exp");
+    if (exp > 0 && now > exp) {
+        mosquitto_log_printf(MOSQ_LOG_WARNING, "JWT token has expired");
+        result = -1;
+    } else {
+        result = 0; // Token is valid
+    }
 
     jwt_free(jwt);
-    return 1;  // Token is valid
-}
-*/
-int plugin_authenticate_qos0(const struct mosquitto_message *msg) {
-    // Check if the payload starts with "Bearer "
-    if (strncmp((char *)msg->payload, "Bearer ", 7) != 0) {
-        printf("Invalid token format\n");
-        return MOSQ_ERR_AUTH;
-    }
-    /*
-    // Extract the token (skip "Bearer " prefix)
-    const char *token = (char *)msg->payload + 7;
-
-    // Verify the JWT token
-    if (verify_jwt(token)) {
-        return MOSQ_ERR_SUCCESS; // Return success if authenticated
-    } else {
-        return MOSQ_ERR_AUTH; // Return authentication failure
-    }
-    */
-   return 0; //esto no va
+    return result;
 }
 
-// Callback for when a QoS 0 message is received
+// Callback for when a message is received
 int on_message_qos0(int event, void *event_data, void *userdata) {
     struct mosquitto_evt_message *msg_evt = (struct mosquitto_evt_message *)event_data;
     struct mosquitto *context = msg_evt->client;
-    uint8_t qos = msg_evt->qos;
+    int rc = MOSQ_ERR_SUCCESS;
+    char token_buf[MAX_TOKEN_SIZE];
 
-    // Log the message details
-    mosquitto_log_printf(MOSQ_LOG_INFO, "Received QOS: %u\n", qos);
-    mosquitto_log_printf(MOSQ_LOG_INFO, "Message received on topic: %s", msg_evt->topic);
-    mosquitto_log_printf(MOSQ_LOG_INFO, "Payload: %.*s\n", msg_evt->payloadlen, (char *)msg_evt->payload);
-
-    // Only process QoS 0 messages
-    /*
-    if (qos == 0) {
-        // Authenticate the message
-        int rc = plugin_authenticate_qos0(msg_evt->payload);
-        if (rc != MOSQ_ERR_SUCCESS) {
-            printf("Authentication failed for client %s\n", mosquitto_client_id(context));
-            return MOSQ_ERR_AUTH;
-        }
+    // Basic validation
+    if (!msg_evt || !msg_evt->payload || msg_evt->payloadlen <= 0) {
+        mosquitto_log_printf(MOSQ_LOG_ERR, "Invalid message received");
+        return MOSQ_ERR_INVAL;
     }
-    */
-    // Allow message processing to continue if authenticated
+
+    // Ensure the payload isn't too large and is null-terminated
+    if (msg_evt->payloadlen >= MAX_TOKEN_SIZE) {
+        mosquitto_log_printf(MOSQ_LOG_ERR, "Token too large");
+        return MOSQ_ERR_INVAL;
+    }
+
+    // Copy payload to ensure null-termination
+    memset(token_buf, 0, MAX_TOKEN_SIZE);
+    memcpy(token_buf, msg_evt->payload, msg_evt->payloadlen);
+
+    // Log attempt
+    mosquitto_log_printf(MOSQ_LOG_INFO, 
+        "Processing auth request from client %s", 
+        mosquitto_client_id(context));
+
+    // Verify the JWT token
+    rc = verify_jwt(token_buf);
+    
+    if (rc != 0) {
+        mosquitto_log_printf(MOSQ_LOG_WARNING, 
+            "Authentication failed for client %s", 
+            mosquitto_client_id(context));
+        return MOSQ_ERR_AUTH;
+    }
+
+    mosquitto_log_printf(MOSQ_LOG_INFO, 
+        "Authentication successful for client %s", 
+        mosquitto_client_id(context));
+    
     return MOSQ_ERR_SUCCESS;
 }
 
-// Plugin initialization function
+// Plugin version (keep as is)
+mosq_plugin_EXPORT int mosquitto_plugin_version(int supported_version_count, const int *supported_versions) {
+    return 5;
+}
+
+// Plugin initialization (keep as is)
 int mosquitto_plugin_init(mosquitto_plugin_id_t *identifier, void **userdata, struct mosquitto_opt *options, int option_count) {
-    (void)options;          //recasteo la variable a void asi no salen warnings por no usar el dato
-    (void)option_count; 
+    (void)options;
+    (void)option_count;
     
-    mosquitto_log_printf(MOSQ_LOG_INFO, "Plugin initialized successfully.\n");
+    mosquitto_log_printf(MOSQ_LOG_INFO, "JWT Auth Plugin initialized!");
     mosquitto_callback_register(identifier, MOSQ_EVT_MESSAGE, on_message_qos0, NULL, userdata);
     return MOSQ_ERR_SUCCESS;
 }
 
-// Plugin cleanup function
+// Plugin cleanup (keep as is)
 int mosquitto_plugin_cleanup(void *user_data, struct mosquitto_opt *opts, int opt_count) {
-    (void)user_data; 
-    (void)opts;      
-    (void)opt_count; 
+    (void)user_data;
+    (void)opts;
+    (void)opt_count;
 
     mosquitto_callback_unregister(NULL, MOSQ_EVT_MESSAGE, on_message_qos0, NULL);
     return MOSQ_ERR_SUCCESS;

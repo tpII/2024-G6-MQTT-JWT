@@ -1,9 +1,16 @@
 # Compiler and flags
 CC = gcc
-CFLAGS = -fPIC -Wall -Iinclude -I/snap/mosquitto/current/usr/include -I/usr/include
-LDFLAGS = -shared -ljwt
+CFLAGS = -fPIC -Wall \
+         -Iinclude \
+         -I/snap/mosquitto/current/usr/include
 
-# Directories
+# Linking flags
+LDFLAGS = -shared \
+          -L/usr/lib/x86_64-linux-gnu \
+          -L/snap/mosquitto/current/usr/lib \
+          -ljwt \
+          -lmosquitto
+
 SRC_DIR = src
 OBJ_DIR = obj
 BIN_DIR = bin
@@ -18,7 +25,7 @@ all: $(TARGET)
 
 $(TARGET): $(OBJS)
 	@mkdir -p $(BIN_DIR)
-	$(CC) $(LDFLAGS) -o $@ $^
+	$(CC) $(OBJS) $(LDFLAGS) -o $@
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(OBJ_DIR)
