@@ -2,18 +2,20 @@
 #include <PubSubClient.h>
 
 // Wi-Fi
-const char* ssid = "";
-const char* pass = "";
+const char* ssid = "alumnosInfo";
+const char* pass = "InformaticaUNLP";
 
 // MQTT Broker
-const char *mqtt_broker = "broker.emqx.io";
-const char *topic = "emqx/esp32";
-const char *mqtt_username = "emqx";
+const char *mqtt_broker = "163.10.143.16";
+const char *topic = "test-conexion/prueba";
+const char *mqtt_username = "esp32";
 const char *mqtt_password = "public";
-const int mqtt_port = 1883;
+const int mqtt_port = 1122;
 
 WiFiClient espClient;
 PubSubClient client(espClient);
+
+uint i = 0;
 
 void setup() {
 
@@ -44,12 +46,13 @@ void setup() {
   while (!client.connected()) {
     String client_id = "esp32-client-";
     client_id += String(WiFi.macAddress());
-    Serial.printf("The client %s connects to the public MQTT broker\n", client_id.c_str());
+    Serial.printf("El cliente %s intenta conectarse al broker MQTT\n", client_id.c_str());
     if (client.connect(client_id.c_str(), mqtt_username, mqtt_password)) {
-      Serial.println("Public EMQX MQTT broker connected");
+      Serial.println("ESP32 conectado\n");
     } else {
-      Serial.print("failed with state ");
+      Serial.print("Error de estado: ");
       Serial.print(client.state());
+      Serial.print("\n");
       delay(2000);
     }
   }
@@ -59,9 +62,9 @@ void setup() {
 }
 
 void callback(char *topic, byte *payload, unsigned int length) {
-    Serial.print("Message arrived in topic: ");
+    Serial.print("\nMessage arrived in topic: ");
     Serial.println(topic);
-    Serial.print("Message:");
+    Serial.print("\nMessage:");
     for (int i = 0; i < length; i++) {
         Serial.print((char) payload[i]);
     }
@@ -70,6 +73,12 @@ void callback(char *topic, byte *payload, unsigned int length) {
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  delay(1000);
+  char mensaje[10];
+  delay(3000);
+  itoa(i, mensaje, 10);
+  client.publish(topic, mensaje);
+  i++;
+  //Serial.print("Estado de la conexión: ");
+  //Serial.print(client.connected());
+  //Serial.print("\n");
 }
