@@ -9,9 +9,10 @@
 
 #define SECRET_KEY "taller-proyecto-2"
 #define MAX_TOKEN_SIZE 1024
+#define MAX_PAYLOAD_SIZE 512
 
 // Helper function to verify JWT token
-int verify_jwt(const char *token) {
+int verify_jwt(const char *token, char *payload) {
     jwt_t *jwt = NULL;
     int result = -1;
     
@@ -26,11 +27,10 @@ int verify_jwt(const char *token) {
         return -1;
     }
 
-    // Log the claims for debugging
-    char *grants = jwt_dump_str(jwt, 0);
-    if (grants) {
-        mosquitto_log_printf(MOSQ_LOG_INFO, "JWT Claims: %s", grants);
-        free(grants);
+    const char *payload_str = jwt_get_grants_json(jwt, NULL);
+    if (payload_str) {
+        strncpy(payload, payload_str, MAX_PAYLOAD_SIZE - 1);
+        mosquitto_log_printf(MOSQ_LOG_ERR, "JWT grants: %s",payload);
     }
 
     // Verify token hasn't expired (if exp claim exists)
@@ -54,6 +54,7 @@ int on_message_qos0(int event, void *event_data, void *userdata) {
     struct mosquitto *context = msg_evt->client;
     int rc = MOSQ_ERR_SUCCESS;
     char token_buf[MAX_TOKEN_SIZE];
+    char payload_buf[MAX_PAYLOAD_SIZE];
 
     // Basic validation
     if (!msg_evt || !msg_evt->payload || msg_evt->payloadlen <= 0) {
@@ -77,7 +78,8 @@ int on_message_qos0(int event, void *event_data, void *userdata) {
         mosquitto_client_id(context));
 
     // Verify the JWT token
-    rc = verify_jwt(token_buf);
+    memset(payload_buf, 0, MAX_PAYLOAD_SIZE);
+    rc = verify_jwt(token_buf, payload_buf);
     
     if (rc != 0) {
         mosquitto_log_printf(MOSQ_LOG_WARNING, 
@@ -90,6 +92,10 @@ int on_message_qos0(int event, void *event_data, void *userdata) {
         "Authentication successful for client %s", 
         mosquitto_client_id(context));
     
+    // Publish the JWT payload
+    msg_evt->payload = payload_buf;
+    msg_evt->payloadlen = (uint32_t)strlen(payload_buf);
+
     return MOSQ_ERR_SUCCESS;
 }
 
