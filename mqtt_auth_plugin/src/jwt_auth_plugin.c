@@ -77,6 +77,10 @@ int on_message_qos0(int event, void *event_data, void *userdata) {
         "Processing auth request from client %s", 
         mosquitto_client_id(context));
 
+    mosquitto_log_printf(MOSQ_LOG_INFO, 
+        "Payload %s", msg_evt->payload);
+    mosquitto_log_printf(MOSQ_LOG_INFO, 
+        "Payload Length %ld", msg_evt->payloadlen);
     // Verify the JWT token
     memset(payload_buf, 0, MAX_PAYLOAD_SIZE);
     rc = verify_jwt(token_buf, payload_buf);
@@ -94,7 +98,7 @@ int on_message_qos0(int event, void *event_data, void *userdata) {
     
     // Publish the JWT payload
     msg_evt->payload = payload_buf;
-    msg_evt->payloadlen = (uint32_t)strlen(payload_buf);
+    msg_evt->payloadlen = strlen(payload_buf);
 
     return MOSQ_ERR_SUCCESS;
 }
