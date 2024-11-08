@@ -30,6 +30,7 @@ int verify_jwt(const char *token, char *payload) {
     const char *payload_str = jwt_get_grants_json(jwt, NULL);
     if (payload_str) {
         strncpy(payload, payload_str, MAX_PAYLOAD_SIZE - 1);
+        payload[strlen(payload)]='\0';
         mosquitto_log_printf(MOSQ_LOG_ERR, "JWT grants: %s",payload);
     }
 
@@ -71,16 +72,12 @@ int on_message_qos0(int event, void *event_data, void *userdata) {
     // Copy payload to ensure null-termination
     memset(token_buf, 0, MAX_TOKEN_SIZE);
     memcpy(token_buf, msg_evt->payload, msg_evt->payloadlen);
+    token_buf[msg_evt->payloadlen] = '\0';
 
     // Log attempt
     mosquitto_log_printf(MOSQ_LOG_INFO, 
         "Processing auth request from client %s", 
         mosquitto_client_id(context));
-
-    mosquitto_log_printf(MOSQ_LOG_INFO, 
-        "Payload %s", msg_evt->payload);
-    mosquitto_log_printf(MOSQ_LOG_INFO, 
-        "Payload Length %ld", msg_evt->payloadlen);
     // Verify the JWT token
     memset(payload_buf, 0, MAX_PAYLOAD_SIZE);
     rc = verify_jwt(token_buf, payload_buf);
@@ -97,8 +94,21 @@ int on_message_qos0(int event, void *event_data, void *userdata) {
         mosquitto_client_id(context));
     
     // Publish the JWT payload
+    rc = mosquitto_publish(context, NULL, msg_evt->topic, strlen(payload_buf)+1, payload_buf, 0, false);
+    if (rc != MOSQ_ERR_SUCCESS) {
+        mosquitto_log_printf(MOSQ_LOG_ERR,
+            "Failed to publish message for client %s, error code %d",
+            mosquitto_client_id(context), rc);
+        return rc;
+    }
+    /*
     msg_evt->payload = payload_buf;
     msg_evt->payloadlen = strlen(payload_buf);
+    */
+    mosquitto_log_printf(MOSQ_LOG_INFO, 
+        "Payload %s", msg_evt->payload);
+    mosquitto_log_printf(MOSQ_LOG_INFO, 
+        "Payload Length %ld", msg_evt->payloadlen);
 
     return MOSQ_ERR_SUCCESS;
 }
