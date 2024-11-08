@@ -1,18 +1,18 @@
 # 2024-G6-MQTT-JWT
 
-En este proyecto se autentifican dispositivos IoT al enviar mensajes MQTT, para ello se verifican JWT (JSON Web Tokens) antes de permitir que un cliente publique a temas específicos. El plugin del broker Mosquitto está desarrollado en C y utiliza la biblioteca `jwt` para decodificar y verificar tokens JWT. Mientras que el Firmware del dispositivo IoT esta desarrollado en Arduino y esta destinado a un ESP32 que publica datos de temperatura captados por un sensor AHT10.
+En este proyecto se Autorizan dispositivos IoT al enviar mensajes MQTT, para ello se verifican JWT (JSON Web Tokens) antes de permitir que un cliente publique a temas específicos. El plugin del broker Mosquitto está desarrollado en C y utiliza la biblioteca `jwt` para decodificar y verificar tokens JWT. Mientras que el Firmware del dispositivo IoT esta desarrollado en Arduino y esta destinado a un ESP32 que publica datos de temperatura captados por un sensor AHT10.
 
 ## Características
 
-- **Autenticación JWT**: Verifica que los clientes envíen un JWT válido antes de autenticarse.
+- **Autenticación JWT**: Verifica que los clientes envíen un JWT válido antes de autorizarlos.
 - **Verificación de caducidad**: Comprueba el reclamo `exp` en el token para asegurarse de que el token no esté expirado.
-- **Publicación de payload JWT**: Publica un mensaje en un tema específico si la autenticación es exitosa.
+- **Publicación de payload JWT**: Publica un mensaje en un tema específico si el dispositivo es autorizado.
 - **Codificacion de JWT en dispositivo IoT**: Un ESP32 codifica los datos de temperatura en un JWT.
 - **Publicacion periodica de Temperatura**: Se captura periodicamente la temperatura a travez de un AHT10.
 
 ## Estructura de Archivos
 
-- `jwt_auth_plugin.c`: Código fuente del plugin de autenticación.
+- `jwt_auth_plugin.c`: Código fuente del plugin de autorizacion.
 - `auth_plugin.h`: Archivo de cabecera para las definiciones de funciones y macros necesarias.
 - `firmware.ino`: Codigo fuente del ESP32.
   
