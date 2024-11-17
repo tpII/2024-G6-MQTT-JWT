@@ -3,6 +3,7 @@
 // Librerías que hay que descargar
 #include <CustomJWT.h>
 #include <PubSubClient.h>
+#include <Adafruit_AHTX0.h>
 
 // Datos de Wi-Fi
 const char* ssid = "alumnosInfo";
@@ -17,11 +18,15 @@ const int mqtt_port = 1122;
 
 WiFiClient espClient;
 PubSubClient client(espClient);
+
 // Datos de JWT
 // Clave de seguridad
 char key[] = "taller-proyecto-2";
 // Objeto CustomJWT con la clave y la longitud esperada del payload
 CustomJWT jwt(key, 256);
+
+// AHT10
+Adafruit_AHTX0 aht;
 
 int i = 0;
 
@@ -33,25 +38,10 @@ void setup() {
   while (!Serial) {};
   delay(1000);
 
-  // Generación del JWT --------------------------------------------------------------------------------------------------------------------------------------
-
-  unsigned long inicioJwt = millis();
-
   // Alocación de memoria para JWT
   jwt.allocateJWTMemory();
-  char string[] = "{\"temp\":22.5,\"speed\":\"25.1\"}";
-  Serial.print(string);
-  Serial.print("\n");
-  jwt.encodeJWT(string);
-  // Se imprime el token
-  Serial.printf("Token: %s\n", jwt.out);
 
-  unsigned long finJwt = millis();
-
-  unsigned long tiempoJwt = finJwt - inicioJwt;
   // Conexión a la red Wi-Fi ---------------------------------------------------------------------------------------------------------------------------------
-
-  unsigned long inicioCon = millis();
 
   // Inicia la conexión
   WiFi.begin(ssid, pass);
@@ -81,21 +71,14 @@ void setup() {
       delay(2000);
     }
   }
-  client.publish(topic, jwt.out);
+  //client.publish(topic, jwt.out);
   client.subscribe(topic);
 
-  unsigned long finCon = millis();
-
-  // Tiempo de ejecución
-  unsigned long tiempoCon = finCon - inicioCon;
-
-  Serial.print("Tiempo de generación de JWT: ");
-  Serial.print(tiempoJwt);
-  Serial.print(" milisegundos\n");
-
-  Serial.print("Tiempo de conexión: ");
-  Serial.print(tiempoCon);
-  Serial.print(" milisegundos\n");
+  // Inicialización del AHT10
+  if (!aht.begin()) {
+    Serial.println("Probando encontrar el sensor");
+    delay(10);
+  }
 }
 
 void callback(char *topic, byte *payload, unsigned int length) {
@@ -115,6 +98,22 @@ void callback(char *topic, byte *payload, unsigned int length) {
 }
 
 void loop() {
-  //delay(1000);
-  client.loop();
+  sensors_event_t humidity, temp;
+  aht.getEvent(&humidity, &temp);   // Obtiene los datos del sensor
+
+  // Generación del JWT --------------------------------------------------------------------------------------------------------------------------------------
+  //char string[] = "{\"temp\":22.5,\"speed\":\"25.1\"}";
+  //char string[] = "{\"temp\":" + temp + ",\"humidity\":" + humidity + "}\0";
+  char string[50];
+  snprintf(string, sizeof(string), "{\"temp\":%.1f,\"humidity\":\"%.1f\"}", temp, humidity);
+
+  Serial.print(string);
+  Serial.print("\n");
+  jwt.encodeJWT(string);
+  // Se imprime el token
+  Serial.printf("Token: %s\n", jwt.out);
+  // Se envía el token al servidor
+  client.publish(topic, jwt.out);
+
+  delay(5000);
 }
