@@ -101,11 +101,13 @@ void loop() {
   sensors_event_t humidity, temp;
   aht.getEvent(&humidity, &temp);   // Obtiene los datos del sensor
 
+  Serial.print("Temperatura: "); Serial.print(temp.temperature); Serial.println(" C°");
+  Serial.print("Humedad: "); Serial.print(humidity.relative_humidity); Serial.println("% rH");
   // Generación del JWT --------------------------------------------------------------------------------------------------------------------------------------
   //char string[] = "{\"temp\":22.5,\"speed\":\"25.1\"}";
   //char string[] = "{\"temp\":" + temp + ",\"humidity\":" + humidity + "}\0";
   char string[50];
-  snprintf(string, sizeof(string), "{\"temp\":%.1f,\"humidity\":\"%.1f\"}", temp, humidity);
+  snprintf(string, sizeof(string), "{\"temp\":%.1f,\"humidity\":\"%.1f\"}", temp.temperature, humidity.relative_humidity);
 
   Serial.print(string);
   Serial.print("\n");
