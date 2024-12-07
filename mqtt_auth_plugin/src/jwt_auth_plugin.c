@@ -26,11 +26,18 @@ int verify_jwt(const char *token, char *payload) {
         mosquitto_log_printf(MOSQ_LOG_ERR, "JWT decode failed: %s",token);
         return -1;
     }
-
+    
     const char *payload_str = jwt_get_grants_json(jwt, NULL);
     if (payload_str) {
-        strncpy(payload, payload_str, MAX_PAYLOAD_SIZE - 1);
-        mosquitto_log_printf(MOSQ_LOG_ERR, "JWT grants: %s",payload);
+        size_t grants_len = strlen(payload_str);
+        if (grants_len >= MAX_PAYLOAD_SIZE) {
+            mosquitto_log_printf(MOSQ_LOG_ERR, "JWT grants too large");
+            jwt_free(jwt);
+            return -1;
+        }
+        memcpy(payload, payload_str, grants_len);
+        payload[grants_len] = '\0';  // Ensure null termination
+        mosquitto_log_printf(MOSQ_LOG_INFO, "JWT grants: %s", payload);
     }
 
     // Verify token hasn't expired (if exp claim exists)
@@ -54,7 +61,8 @@ int on_message_qos0(int event, void *event_data, void *userdata) {
     struct mosquitto *context = msg_evt->client;
     int rc = MOSQ_ERR_SUCCESS;
     char token_buf[MAX_TOKEN_SIZE];
-    char payload_buf[MAX_PAYLOAD_SIZE];
+    char *new_payload = NULL;
+    size_t payload_len;
 
     // Basic validation
     if (!msg_evt || !msg_evt->payload || msg_evt->payloadlen <= 0) {
@@ -69,8 +77,16 @@ int on_message_qos0(int event, void *event_data, void *userdata) {
     }
 
     // Copy payload to ensure null-termination
-    memset(token_buf, 0, MAX_TOKEN_SIZE);
     memcpy(token_buf, msg_evt->payload, msg_evt->payloadlen);
+    token_buf[msg_evt->payloadlen] = '\0';
+
+    // Allocate space for the payload
+    new_payload = malloc(MAX_PAYLOAD_SIZE);
+    if (!new_payload) {
+        mosquitto_log_printf(MOSQ_LOG_ERR, "Memory allocation failed");
+        return MOSQ_ERR_NOMEM;
+    }
+    memset(new_payload, 0, MAX_PAYLOAD_SIZE);
 
     // Log attempt
     mosquitto_log_printf(MOSQ_LOG_INFO, 
@@ -78,9 +94,7 @@ int on_message_qos0(int event, void *event_data, void *userdata) {
         mosquitto_client_id(context));
 
     // Verify the JWT token
-    memset(payload_buf, 0, MAX_PAYLOAD_SIZE);
-    rc = verify_jwt(token_buf, payload_buf);
-    
+    rc = verify_jwt(token_buf, new_payload);
     if (rc != 0) {
         mosquitto_log_printf(MOSQ_LOG_WARNING, 
             "Authentication failed for client %s", 
@@ -92,9 +106,15 @@ int on_message_qos0(int event, void *event_data, void *userdata) {
         "Authentication successful for client %s", 
         mosquitto_client_id(context));
     
-    // Publish the JWT payload
-    msg_evt->payload = payload_buf;
-    msg_evt->payloadlen = (uint32_t)strlen(payload_buf);
+    // Get the actual length of the payload
+    payload_len = strlen(new_payload);
+    
+    // Update the message event with the new payload
+    msg_evt->payload = new_payload;
+    msg_evt->payloadlen = payload_len;
+
+    mosquitto_log_printf(MOSQ_LOG_INFO, "Payload: %s", new_payload);
+    mosquitto_log_printf(MOSQ_LOG_INFO, "Payload Length: %zu", payload_len);
 
     return MOSQ_ERR_SUCCESS;
 }

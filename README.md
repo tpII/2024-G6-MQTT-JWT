@@ -19,10 +19,28 @@ En este proyecto se Autorizan dispositivos IoT al enviar mensajes MQTT, para ell
 ## Dependencias
 
 - **Mosquitto 2.0.11 o superior**: Para asegurarse de que la API de plugin sea compatible.
-- **Biblioteca jwt**: Para decodificar y verificar tokens JWT.
+- **libjwt 1.117.2 o superior**: Para decodificar y verificar tokens JWT en C.
+
+## Compilación
+
+Para compilar este plugin, asegúrate de tener instaladas las dependencias requeridas e incluir el path `/snap/mosquitto/current/usr/include`
+
+```bash
+    $ make
+    $ mv /PATH/TO/PROJECT/bin/mqtt_auth_plugin.so /usr/lib/mosquitto/mqtt_auth_plugin.so
+```
 
 ## Configuracion
 
+Cree un archivo con usuarios que esten autorizados a publicar y suscribir,
+para ello en la carpeta `/etc/mosquitto/`
+
+```bash
+    $ mosquitto_passwd -c passwd user #Crea el archivo passwd con un usuario
+    $ mosquitto_passwd -b passwd user password #Agrega un usuario al archivo passwd
+    $ mosquitto_passwd -D passwd user #Borra un usuario del archivo
+```
+Luego de tener el archivo `mqtt_auth_plugin.so` y `passwd`.
 Configura tu broker mosquito editando el archivo `/etc/mosquitto/mosquitto.conf`
 
 ```conf
@@ -37,21 +55,18 @@ Configura tu broker mosquito editando el archivo `/etc/mosquitto/mosquitto.conf`
 
     include_dir /etc/mosquitto/conf.d
 
-    listener 1122
-    allow_anonymous true
+    #Auth configuration
+    allow_anonymous false
+    password_file /etc/mosquitto/passwd
 
-    # Load your plugin
+    # Encoded IoT listener
+    listener 1122
+    protocol mqtt
     plugin /usr/lib/mosquitto/mqtt_auth_plugin.so
 ```
-
-## Compilación
-
-Para compilar este plugin, asegúrate de tener instaladas las dependencias requeridas e incluir el path `/snap/mosquitto/current/usr/include`
-
+Finalemente reinicie el servicio de broker para aplicar estos cambios
 ```bash
-    $ make
-    $ mv /PATH/TO/PROJECT/bin/mqtt_auth_plugin.so /usr/lib/mosquitto/mqtt_auth_plugin.so
-    $ systemctl restart mosquitto
+    $ sudo systemctl restart mosquitto
 ```
 
 ## Licencia
