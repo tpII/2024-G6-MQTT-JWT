@@ -2,6 +2,8 @@
 
 En este proyecto se Autorizan dispositivos IoT al enviar mensajes MQTT, para ello se verifican JWT (JSON Web Tokens) antes de permitir que un cliente publique a temas específicos. El plugin del broker Mosquitto está desarrollado en C y utiliza la biblioteca `jwt` para decodificar y verificar tokens JWT. Mientras que el Firmware del dispositivo IoT esta desarrollado en Arduino y esta destinado a un ESP32 que publica datos de temperatura captados por un sensor AHT10.
 
+![Diagrama](`assets/Dispositivo IoT.png`)
+
 ## Características
 
 - **Autenticación JWT**: Verifica que los clientes envíen un JWT válido antes de autorizarlos.
