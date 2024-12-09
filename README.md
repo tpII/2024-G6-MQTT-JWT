@@ -102,6 +102,8 @@ Una vez configurado, se debe correr a través del botón 'Deploy' que se encuent
 Por último, se accede al dashboard desde [localhost/ui](http://localhost:1880/ui) donde se visualizan
 los datos de humedad y temperatura publicados por el dispositivo IoT.
 
+## Ejemplos
+[![Casos de Uso](https://drive.google.com/thumbnail?id=1fClLjQQVeiKHwgglp4CNxAXF6xguolMV)](https://drive.google.com/file/d/1fClLjQQVeiKHwgglp4CNxAXF6xguolMV)
 ## Licencia
 
 Este proyecto está bajo la Licencia GPL 3.0. Consulta el archivo `LICENSE` para más detalles.
