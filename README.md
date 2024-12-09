@@ -79,16 +79,28 @@ Finalmente reinicie el servicio de broker para aplicar estos cambios
 
 - **Node-RED**
 
-Una vez instalado Node-Red, se debera iniciar el mismo a través del comando
+En este proyecto es necesario [Node-Red v4.0.5](https://github.com/node-red/node-red/releases/tag/4.0.5).
+Ademas de los nodo necesarios:
+####
+    node-red-dashboard
+    node-red-contrib-mqtt
+
+Estos pueden ser instalador por el gestor de paquetes en `Manage Palette`
+
+Inicialize el servicio por terminal
 ```bash
     $ node-red
 ```
-Luego de haber iniciado, se debe de entrar al navegador y acceder al [localhost](http://localhost:1880).
+Luego de haber iniciado, se debe de entrar al navegador y acceder a [localhost:1880](http://localhost:1880).
 
-Una vez alli se debe instalar los nodos correspondientes descriptos en el informe y luego se importa a través del `menú-importar`, se selecciona el archivo llamado `flows.json` de la carpeta `node_red`.Luego de importar se debe de asignar las credenciales dentro del nodo MQTT, que se encuentran en el informe, para poder acceder al servidor del mismo. 
+Importe el _flow_ o workspace desde el `menú-importar`, seleccion el archivo del proyecto: `node_red/flows.json`.
+
+En la interfaz grafica configure las credenciales para el topico mediciones/temp_hum,
+estas son las credenciales que asigno al archivo `/etc/mosquitto/passwd`
 Una vez configurado, se debe correr a través del botón 'Deploy' que se encuentra en el margen superior derecho.
 
-Por último, se accede a la interfaz grafica desde [localhost/ui](http://localhost:1880/ui).
+Por último, se accede al dashboard desde [localhost/ui](http://localhost:1880/ui) donde se visualizan
+los datos de humedad y temperatura publicados por el dispositivo IoT.
 
 ## Licencia
 
