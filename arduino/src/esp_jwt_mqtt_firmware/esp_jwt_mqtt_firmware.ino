@@ -71,7 +71,6 @@ void setup() {
       delay(2000);
     }
   }
-  //client.publish(topic, jwt.out);
   client.subscribe(topic);
 
   // Inicialización del AHT10
@@ -82,10 +81,6 @@ void setup() {
 }
 
 void callback(char *topic, byte *payload, unsigned int length) {
-  /*for (int i = 0; i < length; i++) {
-    mensaje[i] = (char) payload[i];
-  }
-  mensaje[i] = "0";*/
 
   Serial.print("\nNuevo mensaje en el tópico: ");
   Serial.println(topic);
@@ -99,30 +94,25 @@ void callback(char *topic, byte *payload, unsigned int length) {
 
 void loop() {
   sensors_event_t humidity, temp;
-  aht.getEvent(&humidity, &temp);   // Obtiene los datos del sensor
+  // Obtiene los datos del sensor
+  aht.getEvent(&humidity, &temp);
 
   unsigned long inicio = micros();
 
   Serial.print("Temperatura: "); Serial.print(temp.temperature); Serial.println(" C°");
   Serial.print("Humedad: "); Serial.print(humidity.relative_humidity); Serial.println("% rH");
   // Generación del JWT --------------------------------------------------------------------------------------------------------------------------------------
-  //char string[] = "{\"temp\":22.5,\"speed\":\"25.1\"}";
-  //char string[] = "{\"temp\":" + temp + ",\"humidity\":" + humidity + "}\0";
   char string[50];
   // Temperatura y humedad
-  //snprintf(string, sizeof(string), "{%.1f,%.1f\}", temp.temperature, humidity.relative_humidity);
   snprintf(string, sizeof(string), "{\"temp\":%.1f,\"humidity\":%.1f}", temp.temperature, humidity.relative_humidity);
-  //snprintf(string, sizeof(string), "{\"temp\":%.1f,\"humidity\":\"%.1f\"}", temp.temperature, humidity.relative_humidity);
 
-  Serial.print(string);
-  Serial.print("\n");
-  //jwt.encodeJWT(string);
+  // Codificación del cuerpo en un JWT
+  jwt.encodeJWT(string);
   // Se imprime el token
-  //Serial.printf("Token: %s\n", jwt.out);
+  Serial.printf("Token: %s\n", jwt.out);
   // Se envía el token al servidor
-  //client.publish(topic, jwt.out);
-  client.publish(string, jwt.out);
-
+  client.publish(topic, jwt.out);
+  
   unsigned long fin = micros();
 
   unsigned long tiempo = fin - inicio;
