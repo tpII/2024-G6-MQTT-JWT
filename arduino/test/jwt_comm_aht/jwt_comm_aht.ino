@@ -10,8 +10,8 @@ const char* ssid = "alumnosInfo";
 const char* pass = "InformaticaUNLP";
 
 // MQTT Broker
-const char *mqtt_broker = "163.10.143.16";
-const char *topic = "test/prueba";
+const char *mqtt_broker = "163.10.140.50";
+const char *topic = "mediciones/temp_hum";
 const char *mqtt_username = "esp32";
 const char *mqtt_password = "public";
 const int mqtt_port = 1122;
@@ -101,21 +101,35 @@ void loop() {
   sensors_event_t humidity, temp;
   aht.getEvent(&humidity, &temp);   // Obtiene los datos del sensor
 
+  unsigned long inicio = micros();
+
   Serial.print("Temperatura: "); Serial.print(temp.temperature); Serial.println(" C°");
   Serial.print("Humedad: "); Serial.print(humidity.relative_humidity); Serial.println("% rH");
   // Generación del JWT --------------------------------------------------------------------------------------------------------------------------------------
   //char string[] = "{\"temp\":22.5,\"speed\":\"25.1\"}";
   //char string[] = "{\"temp\":" + temp + ",\"humidity\":" + humidity + "}\0";
   char string[50];
-  snprintf(string, sizeof(string), "{\"temp\":%.1f,\"humidity\":\"%.1f\"}", temp.temperature, humidity.relative_humidity);
+  // Temperatura y humedad
+  //snprintf(string, sizeof(string), "{%.1f,%.1f\}", temp.temperature, humidity.relative_humidity);
+  snprintf(string, sizeof(string), "{\"temp\":%.1f,\"humidity\":%.1f}", temp.temperature, humidity.relative_humidity);
+  //snprintf(string, sizeof(string), "{\"temp\":%.1f,\"humidity\":\"%.1f\"}", temp.temperature, humidity.relative_humidity);
 
   Serial.print(string);
   Serial.print("\n");
   jwt.encodeJWT(string);
   // Se imprime el token
-  Serial.printf("Token: %s\n", jwt.out);
+  //Serial.printf("Token: %s\n", jwt.out);
   // Se envía el token al servidor
-  client.publish(topic, jwt.out);
+  //client.publish(topic, jwt.out);
+  client.publish(string, jwt.out);
+
+  unsigned long fin = micros();
+
+  unsigned long tiempo = fin - inicio;
+
+  Serial.print("Tiempo en microsegundos: ");
+  Serial.print(tiempo);
+  Serial.print("\n\n");
 
   delay(5000);
 }
